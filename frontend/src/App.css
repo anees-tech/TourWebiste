@@ -109,6 +109,20 @@
   gap: 20px;
 }
 
+/* Error message styles */
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.error-message button {
+  margin-top: 10px;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .grid {

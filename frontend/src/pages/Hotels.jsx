@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { hotelsAPI } from "../utils/api"
 import "./Hotels.css"
 
 const Hotels = () => {
@@ -15,6 +16,7 @@ const Hotels = () => {
   const [hotels, setHotels] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  const [error, setError] = useState("")
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -24,60 +26,23 @@ const Hotels = () => {
     }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
     setHasSearched(true)
+    setError("")
 
-    // In a real app, this would be an API call
-    // For now, we'll use mock data
-    setTimeout(() => {
-      const mockHotels = [
-        {
-          id: 1,
-          name: "Grand Hotel Paris",
-          location: "Paris, France",
-          rating: 4.7,
-          reviews: 1243,
-          price: 199,
-          image: "/placeholder.svg?height=200&width=300",
-          amenities: ["Free WiFi", "Breakfast included", "Swimming pool", "Fitness center"],
-        },
-        {
-          id: 2,
-          name: "Luxury Rome Suites",
-          location: "Rome, Italy",
-          rating: 4.5,
-          reviews: 876,
-          price: 179,
-          image: "/placeholder.svg?height=200&width=300",
-          amenities: ["Free WiFi", "Spa", "Restaurant", "Bar"],
-        },
-        {
-          id: 3,
-          name: "Istanbul Palace Hotel",
-          location: "Istanbul, Turkey",
-          rating: 4.8,
-          reviews: 1567,
-          price: 159,
-          image: "/placeholder.svg?height=200&width=300",
-          amenities: ["Free WiFi", "Breakfast included", "Rooftop terrace", "Airport shuttle"],
-        },
-        {
-          id: 4,
-          name: "Barcelona Beach Resort",
-          location: "Barcelona, Spain",
-          rating: 4.6,
-          reviews: 1089,
-          price: 189,
-          image: "/placeholder.svg?height=200&width=300",
-          amenities: ["Free WiFi", "Beach access", "Swimming pool", "Restaurant"],
-        },
-      ]
-
-      setHotels(mockHotels)
+    try {
+      const response = await hotelsAPI.search(searchParams)
+      if (response.success) {
+        setHotels(response.data)
+      }
+    } catch (err) {
+      setError(err.message || "Failed to search hotels")
+      setHotels([])
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   return (
@@ -175,6 +140,15 @@ const Hotels = () => {
       </div>
 
       <div className="hotels-results-container">
+        {error && (
+          <div className="error-message">
+            <p>{error}</p>
+            <button onClick={handleSubmit} className="btn-primary">
+              Retry
+            </button>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="hotels-loading">
             <div className="loading-spinner"></div>
@@ -192,24 +166,25 @@ const Hotels = () => {
             {hotels.length > 0 ? (
               <div className="hotels-list">
                 {hotels.map((hotel) => (
-                  <div className="hotel-card" key={hotel.id}>
+                  <div className="hotel-card" key={hotel._id}>
                     <div className="hotel-image">
-                      <img src={hotel.image || "/placeholder.svg"} alt={hotel.name} />
+                      <img src={hotel.image || "/placeholder.svg?height=200&width=300"} alt={hotel.name} />
                     </div>
                     <div className="hotel-details">
                       <div className="hotel-info">
                         <h3 className="hotel-name">{hotel.name}</h3>
                         <p className="hotel-location">{hotel.location}</p>
                         <div className="hotel-rating">
-                          <span className="rating-score">{hotel.rating}</span>
-                          <span className="rating-text">Excellent · {hotel.reviews} reviews</span>
+                          <span className="rating-score">{hotel.rating || "4.5"}</span>
+                          <span className="rating-text">Excellent · {hotel.reviews || "0"} reviews</span>
                         </div>
                         <div className="hotel-amenities">
-                          {hotel.amenities.map((amenity, index) => (
-                            <span key={index} className="amenity-tag">
-                              {amenity}
-                            </span>
-                          ))}
+                          {hotel.amenities &&
+                            hotel.amenities.map((amenity, index) => (
+                              <span key={index} className="amenity-tag">
+                                {amenity}
+                              </span>
+                            ))}
                         </div>
                       </div>
                       <div className="hotel-booking">

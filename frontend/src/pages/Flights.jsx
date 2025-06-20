@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import { flightsAPI, fetchAllFlights, bookingsAPI } from "../utils/api"
 import "./Flights.css"
 
 const Flights = () => {
@@ -14,8 +16,28 @@ const Flights = () => {
   })
 
   const [flights, setFlights] = useState([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [hasSearched, setHasSearched] = useState(false)
+  const [error, setError] = useState("")
+  const [bookingFlightId, setBookingFlightId] = useState(null)
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    const loadAllFlights = async () => {
+      try {
+        const allFlights = await fetchAllFlights()
+        setFlights(allFlights)
+        setError("")
+      } catch (err) {
+        setError("Failed to load available flights. Please try again later.")
+        setFlights([])
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadAllFlights()
+  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -25,69 +47,52 @@ const Flights = () => {
     }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSelectFlight = async (flight) => {
+    const token = JSON.parse(localStorage.getItem("user") || "{}").token
+    if (!token) {
+      navigate("/login")
+      return
+    }
+
+    setBookingFlightId(flight._id)
+    setError("")
+
+    try {
+      const bookingData = {
+        type: "flight",
+        flightId: flight._id,
+        guests: {
+          adults: parseInt(searchParams.passengers, 10) || 1,
+        },
+        startDate: flight.departDate,
+      }
+
+      await bookingsAPI.create(bookingData)
+      navigate("/dashboard")
+    } catch (err) {
+      setError(err.message || "Failed to book flight. Please try again.")
+    } finally {
+      setBookingFlightId(null)
+    }
+  }
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setIsLoading(true)
     setHasSearched(true)
+    setError("")
 
-    // In a real app, this would be an API call
-    // For now, we'll use mock data
-    setTimeout(() => {
-      const mockFlights = [
-        {
-          id: 1,
-          airline: "Air France",
-          flightNumber: "AF1234",
-          from: searchParams.from,
-          to: searchParams.to,
-          departTime: "08:30",
-          arriveTime: "10:45",
-          duration: "2h 15m",
-          price: 299,
-          stops: 0,
-        },
-        {
-          id: 2,
-          airline: "Lufthansa",
-          flightNumber: "LH5678",
-          from: searchParams.from,
-          to: searchParams.to,
-          departTime: "12:15",
-          arriveTime: "14:50",
-          duration: "2h 35m",
-          price: 329,
-          stops: 0,
-        },
-        {
-          id: 3,
-          airline: "British Airways",
-          flightNumber: "BA9012",
-          from: searchParams.from,
-          to: searchParams.to,
-          departTime: "16:45",
-          arriveTime: "19:30",
-          duration: "2h 45m",
-          price: 279,
-          stops: 1,
-          stopCity: "Brussels",
-        },
-        {
-          id: 4,
-          airline: "Turkish Airlines",
-          flightNumber: "TK3456",
-          from: searchParams.from,
-          to: searchParams.to,
-          departTime: "20:10",
-          arriveTime: "23:05",
-          duration: "2h 55m",
-          price: 259,
-          stops: 0,
-        },
-      ]
-
-      setFlights(mockFlights)
+    try {
+      const response = await flightsAPI.search(searchParams)
+      if (response.success) {
+        setFlights(response.data)
+      }
+    } catch (err) {
+      setError(err.message || "Failed to search flights")
+      setFlights([])
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   return (
@@ -198,24 +203,33 @@ const Flights = () => {
       </div>
 
       <div className="flights-results-container">
+        {error && (
+          <div className="error-message">
+            <p>{error}</p>
+            <button onClick={hasSearched ? handleSubmit : () => window.location.reload()} className="btn-primary">
+              {hasSearched ? "Retry Search" : "Reload Flights"}
+            </button>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flights-loading">
             <div className="loading-spinner"></div>
-            <p>Searching for the best flights...</p>
+            <p>{hasSearched ? "Searching for the best flights..." : "Loading available flights..."}</p>
           </div>
-        ) : hasSearched ? (
+        ) : (
           <>
             <div className="flights-results-header">
               <h2>Flight Results</h2>
               <p>
-                {flights.length} flights found from {searchParams.from} to {searchParams.to}
+                {flights.length} flights {hasSearched ? `found from ${searchParams.from} to ${searchParams.to}` : "available"}
               </p>
             </div>
 
             {flights.length > 0 ? (
               <div className="flights-list">
                 {flights.map((flight) => (
-                  <div className="flight-card" key={flight.id}>
+                  <div className="flight-card" key={flight._id}>
                     <div className="flight-card-header">
                       <div className="airline-info">
                         <div className="airline-logo">{flight.airline.charAt(0)}</div>
@@ -254,7 +268,13 @@ const Flights = () => {
                     </div>
 
                     <div className="flight-card-footer">
-                      <button className="select-flight-btn">Select</button>
+                      <button
+                        className="select-flight-btn"
+                        onClick={() => handleSelectFlight(flight)}
+                        disabled={bookingFlightId === flight._id}
+                      >
+                        {bookingFlightId === flight._id ? "Booking..." : "Select"}
+                      </button>
                       <button className="flight-details-btn">View Details</button>
                     </div>
                   </div>
@@ -262,16 +282,12 @@ const Flights = () => {
               </div>
             ) : (
               <div className="no-flights">
-                <p>No flights found for your search criteria. Please try different dates or destinations.</p>
+                <p>{hasSearched 
+                  ? "No flights found for your search criteria. Please try different dates or destinations." 
+                  : "No flights are currently available. Please check back later."}</p>
               </div>
             )}
           </>
-        ) : (
-          <div className="flights-placeholder">
-            <div className="placeholder-icon">✈️</div>
-            <h3>Ready to take off?</h3>
-            <p>Search for flights to get started on your next adventure.</p>
-          </div>
         )}
       </div>
     </div>

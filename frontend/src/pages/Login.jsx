@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
+import { authAPI } from "../utils/api"
 import "./Auth.css"
 
 const Login = ({ setUser }) => {
@@ -27,37 +28,16 @@ const Login = ({ setUser }) => {
     setIsLoading(true)
 
     try {
-      // In a real app, this would be an API call
-      // For now, we'll simulate authentication
-      setTimeout(() => {
-        // Check if user exists (mock check)
-        if (formData.email === "admin@example.com" && formData.password === "password") {
-          const userData = {
-            id: 1,
-            name: "Admin User",
-            email: formData.email,
-            role: "admin",
-          }
-          localStorage.setItem("user", JSON.stringify(userData))
-          setUser(userData)
-          navigate("/dashboard")
-        } else if (formData.email === "user@example.com" && formData.password === "password") {
-          const userData = {
-            id: 2,
-            name: "Regular User",
-            email: formData.email,
-            role: "user",
-          }
-          localStorage.setItem("user", JSON.stringify(userData))
-          setUser(userData)
-          navigate("/dashboard")
-        } else {
-          setError("Invalid email or password")
-        }
-        setIsLoading(false)
-      }, 1000)
+      const response = await authAPI.login(formData)
+
+      if (response.success) {
+        localStorage.setItem("user", JSON.stringify(response.data))
+        setUser(response.data)
+        navigate("/dashboard")
+      }
     } catch (err) {
-      setError("An error occurred. Please try again.")
+      setError(err.message || "Login failed. Please try again.")
+    } finally {
       setIsLoading(false)
     }
   }

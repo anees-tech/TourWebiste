@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
+import { toursAPI } from "../utils/api"
 import "./Packages.css"
 
 const Packages = () => {
   const [packages, setPackages] = useState([])
   const [filteredPackages, setFilteredPackages] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
   const [filters, setFilters] = useState({
     destination: "",
     duration: "",
@@ -16,89 +18,26 @@ const Packages = () => {
   })
 
   useEffect(() => {
-    // In a real app, this would be an API call
-    // For now, we'll use mock data
-    setTimeout(() => {
-      const mockPackages = [
-        {
-          id: 1,
-          title: "Paris Cultural Experience",
-          destination: "Paris, France",
-          description:
-            "Immerse yourself in the rich cultural heritage of Paris with guided tours of the Louvre, Eiffel Tower, and Notre-Dame Cathedral.",
-          duration: 5,
-          price: 1299,
-          rating: 4.8,
-          reviews: 124,
-          image: "/placeholder.svg?height=300&width=500",
-          highlights: [
-            "Skip-the-line access to the Louvre Museum",
-            "Guided tour of Notre-Dame Cathedral",
-            "Evening cruise on the Seine River",
-            "Day trip to Versailles Palace",
-          ],
-        },
-        {
-          id: 2,
-          title: "Rome Historical Tour",
-          destination: "Rome, Italy",
-          description:
-            "Step back in time and explore the ancient wonders of Rome, from the Colosseum to the Vatican City and everything in between.",
-          duration: 6,
-          price: 1499,
-          rating: 4.7,
-          reviews: 98,
-          image: "/placeholder.svg?height=300&width=500",
-          highlights: [
-            "VIP access to the Colosseum and Roman Forum",
-            "Guided tour of the Vatican Museums and Sistine Chapel",
-            "Traditional Italian cooking class",
-            "Day trip to Pompeii",
-          ],
-        },
-        {
-          id: 3,
-          title: "Istanbul Discovery",
-          destination: "Istanbul, Turkey",
-          description:
-            "Experience the unique blend of European and Asian cultures in Istanbul, visiting iconic sites like the Blue Mosque and Hagia Sophia.",
-          duration: 7,
-          price: 1199,
-          rating: 4.9,
-          reviews: 156,
-          image: "/placeholder.svg?height=300&width=500",
-          highlights: [
-            "Guided tour of the Blue Mosque and Hagia Sophia",
-            "Bosphorus cruise between two continents",
-            "Traditional Turkish hammam experience",
-            "Culinary tour of the Spice Bazaar",
-          ],
-        },
-        {
-          id: 4,
-          title: "Barcelona Highlights",
-          destination: "Barcelona, Spain",
-          description:
-            "Discover the vibrant city of Barcelona, from Gaudí's architectural masterpieces to the beautiful beaches and delicious cuisine.",
-          duration: 4,
-          price: 999,
-          rating: 4.6,
-          reviews: 87,
-          image: "/placeholder.svg?height=300&width=500",
-          highlights: [
-            "Skip-the-line access to Sagrada Familia",
-            "Guided tour of Park Güell",
-            "Tapas and wine tasting experience",
-            "Day trip to Montserrat",
-          ],
-        },
-      ]
-
-      setPackages(mockPackages)
-      setFilteredPackages(mockPackages)
-      setIsLoading(false)
-    }, 1500)
+    fetchPackages()
   }, [])
+
+  useEffect(() => {
+    applyFilters()
+  }, [packages, filters])
+
+  const fetchPackages = async () => {
+    try {
+      const response = await toursAPI.getAll()
+      if (response.success) {
+        setPackages(response.data)
+        setFilteredPackages(response.data)
+      }
+    } catch (err) {
+      setError(err.message || "Failed to fetch packages")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target
@@ -113,7 +52,11 @@ const Packages = () => {
 
     // Filter by destination
     if (filters.destination) {
-      filtered = filtered.filter((pkg) => pkg.destination.toLowerCase().includes(filters.destination.toLowerCase()))
+      filtered = filtered.filter(
+        (pkg) =>
+          pkg.destination.toLowerCase().includes(filters.destination.toLowerCase()) ||
+          pkg.title.toLowerCase().includes(filters.destination.toLowerCase()),
+      )
     }
 
     // Filter by duration
@@ -143,7 +86,7 @@ const Packages = () => {
         filtered.sort((a, b) => b.duration - a.duration)
         break
       case "rating":
-        filtered.sort((a, b) => b.rating - a.rating)
+        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0))
         break
       default:
         // 'recommended' - no specific sort
@@ -243,6 +186,15 @@ const Packages = () => {
         </div>
 
         <div className="packages-content">
+          {error && (
+            <div className="error-message">
+              <p>{error}</p>
+              <button onClick={fetchPackages} className="btn-primary">
+                Retry
+              </button>
+            </div>
+          )}
+
           {isLoading ? (
             <div className="packages-loading">
               <div className="loading-spinner"></div>
@@ -258,9 +210,9 @@ const Packages = () => {
               {filteredPackages.length > 0 ? (
                 <div className="packages-list">
                   {filteredPackages.map((pkg) => (
-                    <div className="package-card" key={pkg.id}>
+                    <div className="package-card" key={pkg._id}>
                       <div className="package-image">
-                        <img src={pkg.image || "/placeholder.svg"} alt={pkg.title} />
+                        <img src={pkg.image || "/placeholder.svg?height=300&width=500"} alt={pkg.title} />
                         <div className="package-duration">
                           <span>{pkg.duration} days</span>
                         </div>
@@ -269,16 +221,15 @@ const Packages = () => {
                         <h3 className="package-title">{pkg.title}</h3>
                         <p className="package-destination">{pkg.destination}</p>
                         <div className="package-rating">
-                          <span className="rating-score">{pkg.rating}</span>
-                          <span className="rating-text">({pkg.reviews} reviews)</span>
+                          <span className="rating-score">{pkg.rating || "4.5"}</span>
+                          <span className="rating-text">({pkg.reviews || "0"} reviews)</span>
                         </div>
                         <p className="package-description">{pkg.description}</p>
                         <div className="package-highlights">
                           <h4>Highlights:</h4>
                           <ul>
-                            {pkg.highlights.slice(0, 2).map((highlight, index) => (
-                              <li key={index}>{highlight}</li>
-                            ))}
+                            {pkg.highlights &&
+                              pkg.highlights.slice(0, 2).map((highlight, index) => <li key={index}>{highlight}</li>)}
                           </ul>
                         </div>
                         <div className="package-footer">
@@ -287,7 +238,7 @@ const Packages = () => {
                             <span className="price-text">per person</span>
                           </div>
                           <div className="package-actions">
-                            <Link to={`/packages/${pkg.id}`} className="view-details-btn">
+                            <Link to={`/packages/${pkg._id}`} className="view-details-btn">
                               View Details
                             </Link>
                             <button className="book-now-btn">Book Now</button>

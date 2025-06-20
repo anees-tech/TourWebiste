@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
+import { authAPI } from "../utils/api"
 import "./Auth.css"
 
 const Register = ({ setUser }) => {
@@ -37,23 +38,22 @@ const Register = ({ setUser }) => {
     setIsLoading(true)
 
     try {
-      // In a real app, this would be an API call
-      // For now, we'll simulate registration
-      setTimeout(() => {
-        const userData = {
-          id: Math.floor(Math.random() * 1000),
-          name: `${formData.firstName} ${formData.lastName}`,
-          email: formData.email,
-          role: "user",
-        }
+      const userData = {
+        name: `${formData.firstName} ${formData.lastName}`,
+        email: formData.email,
+        password: formData.password,
+      }
 
-        localStorage.setItem("user", JSON.stringify(userData))
-        setUser(userData)
+      const response = await authAPI.register(userData)
+
+      if (response.success) {
+        localStorage.setItem("user", JSON.stringify(response.data))
+        setUser(response.data)
         navigate("/dashboard")
-        setIsLoading(false)
-      }, 1000)
+      }
     } catch (err) {
-      setError("An error occurred. Please try again.")
+      setError(err.message || "Registration failed. Please try again.")
+    } finally {
       setIsLoading(false)
     }
   }

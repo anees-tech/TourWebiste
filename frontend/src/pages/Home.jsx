@@ -2,52 +2,31 @@
 
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
+import { toursAPI } from "../utils/api"
 import "./Home.css"
 
 const Home = () => {
   const [featuredDestinations, setFeaturedDestinations] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
 
   useEffect(() => {
-    // In a real app, this would be an API call
-    // For now, we'll use mock data
-    setTimeout(() => {
-      setFeaturedDestinations([
-        {
-          id: 1,
-          name: "Paris, France",
-          description:
-            "Explore the city of love with its iconic Eiffel Tower, world-class museums, and charming cafes.",
-          image: "/images/paris.jpg",
-          price: 1299,
-        },
-        {
-          id: 2,
-          name: "Rome, Italy",
-          description: "Discover ancient history, stunning architecture, and delicious cuisine in the Eternal City.",
-          image: "/images/rome.jpg",
-          price: 1199,
-        },
-        {
-          id: 3,
-          name: "Istanbul, Turkey",
-          description:
-            "Experience the unique blend of European and Asian cultures in this vibrant city spanning two continents.",
-          image: "/images/istanbul.jpg",
-          price: 999,
-        },
-        {
-          id: 4,
-          name: "Barcelona, Spain",
-          description:
-            "Enjoy beautiful beaches, unique architecture, and a lively atmosphere in this Mediterranean gem.",
-          image: "/images/barcelona.jpg",
-          price: 1099,
-        },
-      ])
-      setIsLoading(false)
-    }, 1000)
+    fetchFeaturedDestinations()
   }, [])
+
+  const fetchFeaturedDestinations = async () => {
+    try {
+      const response = await toursAPI.getAll()
+      if (response.success) {
+        // Get first 4 tours as featured destinations
+        setFeaturedDestinations(response.data.slice(0, 4))
+      }
+    } catch (err) {
+      setError(err.message || "Failed to fetch destinations")
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <div className="home">
@@ -109,21 +88,29 @@ const Home = () => {
       <section className="featured-section">
         <div className="container">
           <h2 className="section-title">Featured Destinations</h2>
+          {error && (
+            <div className="error-message">
+              <p>{error}</p>
+              <button onClick={fetchFeaturedDestinations} className="btn-primary">
+                Retry
+              </button>
+            </div>
+          )}
           {isLoading ? (
             <div className="loading">Loading destinations...</div>
           ) : (
             <div className="destinations-grid">
               {featuredDestinations.map((destination) => (
-                <div className="destination-card" key={destination.id}>
+                <div className="destination-card" key={destination._id}>
                   <div className="destination-img">
-                    <img src={destination.image || `/placeholder.svg?height=300&width=400`} alt={destination.name} />
+                    <img src={destination.image || `/placeholder.svg?height=300&width=400`} alt={destination.title} />
                   </div>
                   <div className="destination-content">
-                    <h3>{destination.name}</h3>
+                    <h3>{destination.title}</h3>
                     <p>{destination.description}</p>
                     <div className="destination-footer">
                       <span className="price">From ${destination.price}</span>
-                      <Link to={`/packages/${destination.id}`} className="view-btn">
+                      <Link to={`/packages/${destination._id}`} className="view-btn">
                         View Details
                       </Link>
                     </div>

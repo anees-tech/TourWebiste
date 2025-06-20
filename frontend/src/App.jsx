@@ -12,6 +12,7 @@ import Hotels from "./pages/Hotels"
 import Packages from "./pages/Packages"
 import Dashboard from "./pages/Dashboard"
 import AdminPanel from "./pages/AdminPanel"
+import PackageDetails from "./pages/PackageDetails"
 import "./App.css"
 
 function App() {
@@ -50,6 +51,7 @@ function App() {
             <Route path="/flights" element={<Flights />} />
             <Route path="/hotels" element={<Hotels />} />
             <Route path="/packages" element={<Packages />} />
+            <Route path="/packages/:id" element={<PackageDetails />} />
             <Route
               path="/dashboard"
               element={
